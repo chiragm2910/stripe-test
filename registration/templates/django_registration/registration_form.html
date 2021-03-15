@@ -1,0 +1,26 @@
+{% extends 'user_subscription/base.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+    <br>
+    <div>
+        <div style="width: fit-content; margin: auto">
+            <form action="" method="post" novalidate>
+                {% csrf_token %}
+                {{form|crispy}}
+                {% comment %} {% for field in form %}
+                    <div class="fieldWrapper">                
+                        {{field.label_tag}}  {{field}} <br><br>
+                        {% if field.errors %}
+                            {{field.errors}}
+                        {% endif %}                
+                    </div>   
+                {% endfor %} {% endcomment %}
+                <input type="submit" value="Register" class="btn btn-primary">
+                <small style="color:blue">Already have an account ?</small>
+                <a href="/accounts/login/">Login</a>
+            </form>
+        </div>
+        
+    </div>
+{% endblock %}
+    

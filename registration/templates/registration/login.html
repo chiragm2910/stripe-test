@@ -1,0 +1,22 @@
+{% extends 'user_subscription/base.html' %}
+{% block content %}
+    <br>
+    {% if form.errors %}
+        <p style="color:red">Your username and password didn't match. Please try again or register first.</p>
+    {% endif %}
+    <form action="" method="post" novalidate>
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="fieldWrapper">                
+                {{field.label_tag}}  {{field}} <br><br>
+                {% if field.errors %}
+                    {{field.errors}}
+                {% endif %}                
+            </div>            
+        {% endfor %}  
+        <input class="btn btn-primary btn-sm" type="submit" value="Login"><br><br>
+        <small style="color:blue">Not Registered yet ?</small><a href="/accounts/register/">Register</a>
+    </form>
+{% endblock  %}
+    
+    
