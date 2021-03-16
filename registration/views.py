@@ -1,4 +1,5 @@
 import json
+import logging
 
 import djstripe
 import stripe
@@ -14,16 +15,20 @@ from djstripe.models import Product
 
 from .models import CustomUser
 
+logger = logging.getLogger(__name__)
+
 
 @method_decorator(login_required, name="dispatch")
 class ProfilePage(View):
     """
-    It displays the prfile page after logging in.
+    It displays the profile page after logging in.
     """
 
     def get(self, request, *args, **kwargs):
 
         if request.user.active_subscription:
+
+            logger.info("User logged in successfully")
             return render(request, "subscription/subscriptioncomplete.html")
 
         context = {
@@ -41,8 +46,8 @@ class LogoutView(View):
     """
 
     def get(self, request):
-
         logout(request)
+        logger.info("User logged out successfully")
         return render(request, "logout/logout_page.html")
 
 
@@ -55,6 +60,8 @@ class CreateSubscription(View):
     def post(self, request):
 
         data = json.loads(request.body)
+        logger.info("Card Data")
+        logger.info(data)
         payment_method = data["payment_method"]
         stripe.api_key = djstripe.settings.STRIPE_SECRET_KEY
 
@@ -68,7 +75,7 @@ class CreateSubscription(View):
                 email=request.user.email,
                 invoice_settings={"default_payment_method": payment_method},
             )
-
+            logger.info("Stripe customer created")
             djstripe_customer = djstripe.models.Customer.sync_from_stripe_data(customer)
             request.user.customer = djstripe_customer
 
@@ -86,16 +93,19 @@ class CreateSubscription(View):
                 trial_period_days=7,
                 expand=["latest_invoice.payment_intent"],
             )
-
+            logger.info("Stripe subscription created")
             djstripe_subscription = djstripe.models.Subscription.sync_from_stripe_data(
                 subscription
             )
             request.user.active_subscription = True
             request.user.subscription = djstripe_subscription
             request.user.save()
+            logger.info("Subscription for user marked active")
             return JsonResponse(subscription)
 
-        except Exception as e:
+        except (KeyError, LookupError, TypeError, ValueError) as e:
+            logger.error("Something got wrong while subscribing")
+            logger.error(e)
             return JsonResponse({"error": (e.args[0])}, status=403)
         else:
             return HttpResponse("request method not allowed")
@@ -108,7 +118,7 @@ class Complete(View):
     """
 
     def get(self, request):
-
+        logger.info("Subscription and Payment successful")
         return render(request, "subscription/subscriptioncomplete.html")
 
 
@@ -120,6 +130,7 @@ class UserSubscriptionPlan(View):
 
     def get(self, request):
 
+        logger.info("Displaying user's active plans")
         return render(request, "subscription/mysubscriptionplan.html")
 
 
@@ -131,15 +142,17 @@ class CancelSubscription(View):
 
     def get(self, request):
 
-        if request.user.is_authenticated:
-            sub_id = request.user.subscription.id
-            stripe.api_key = djstripe.settings.STRIPE_SECRET_KEY
+        sub_id = request.user.subscription.id
+        stripe.api_key = djstripe.settings.STRIPE_SECRET_KEY
 
-            try:
-                request.user.active_subscription = False
-                stripe.Subscription.delete(sub_id)
-                request.user.save()
-            except Exception as e:
-                return render(request, "subscription/nosubscriptionplans.html")
+        try:
+            request.user.active_subscription = False
+            stripe.Subscription.delete(sub_id)
+            request.user.save()
+            logger.info("User subscription cancelled")
+        except (LookupError, TypeError, ValueError) as e:
+            logger.error("Subscription cancellation failed!")
+            logger.error(e)
+            return render(request, "subscription/nosubscriptionplans.html")
 
-            return render(request, "subscription/subscriptioncancel.html")
+        return render(request, "subscription/subscriptioncancel.html")
